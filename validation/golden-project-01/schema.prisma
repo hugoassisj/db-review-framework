@@ -1,0 +1,69 @@
+// Golden project 01: a synthetic Prisma + PostgreSQL schema seeded with known smells.
+// This file is deliberately flawed. See expected-findings.md for the findings a passing
+// review must surface. Do not "fix" it; it is a test fixture.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String?  // SMELL(data-model): login identity is nullable and not unique
+  password  String   // SMELL(security): plaintext password, should be a salted hash
+  orders    Order[]
+  posts     Post[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   User     @relation(fields: [customerId], references: [id]) // SMELL(prisma): no onDelete decision
+  status     String   // SMELL(data-model): free-text status, should be an enum
+  totalCents Int
+  metadata   Json     // SMELL(data-model): review whether queried fields hide in here
+  createdAt  DateTime @default(now())
+
+  // SMELL(indexing): query is WHERE customerId = ? ORDER BY createdAt DESC, but the
+  // composite leads with createdAt, so the equality on customerId cannot drive it.
+  @@index([createdAt, customerId])
+}
+
+model Post {
+  id       Int       @id @default(autoincrement())
+  authorId Int
+  author   User      @relation(fields: [authorId], references: [id])
+  tags     String    // SMELL(data-model): comma-separated tags (jaywalking)
+  comments Comment[]
+}
+
+model Comment {
+  id     Int    @id @default(autoincrement())
+  postId Int
+  post   Post   @relation(fields: [postId], references: [id])
+  body   String
+  // SMELL(indexing/prisma): comments are filtered by postId but the FK has no @@index
+}
+
+model Event {
+  id        BigInt   @id @default(autoincrement())
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+  // SMELL(scalability): append-only, no retention/partition plan; also no index on createdAt
+}
+
+model Artifact {
+  id      Int   @id @default(autoincrement())
+  content Bytes // SMELL(scalability): large binary stored in-row instead of object storage
+}
+
+model ApiCredential {
+  id        Int    @id @default(autoincrement())
+  apiSecret String // SMELL(security): plaintext secret, should be encrypted at rest
+}

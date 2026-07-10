@@ -1,0 +1,17 @@
+{
+  "name": "db-review-framework",
+  "metadata": {
+    "description": "A principal-engineer database review board for Claude Code: evidence-first reviews of relational schema, Prisma, migrations, indexing, query performance, scalability, security, and DB-related backend code."
+  },
+  "owner": {
+    "name": "Hugo Assis",
+    "email": "hugo.assis.j@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "db-review",
+      "source": "./",
+      "description": "A principal-engineer database review board: schema, Prisma, migrations, indexing, query performance, scalability, security, and DB-related backend code, reviewed against a shared evidence-first contract."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "db-review",
+  "description": "A principal-engineer database review board for Claude Code. Reviews relational schemas, Prisma models, migrations, indexes, and DB-related backend code against a shared, evidence-first engineering contract grounded in canonical sources.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Hugo Assis",
+    "email": "hugo.assis.j@gmail.com"
+  },
+  "homepage": "https://github.com/your-github-username/db-review-framework",
+  "repository": "https://github.com/your-github-username/db-review-framework",
+  "license": "MIT"
+}
