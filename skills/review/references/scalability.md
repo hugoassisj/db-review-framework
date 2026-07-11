@@ -28,6 +28,10 @@ design degrade linearly or non-linearly as data and traffic grow? Sources
   locality and index density; UUIDv7 (time-ordered) recovers locality. Weigh
   distributed generation and opacity against index size and locality (see the
   trade-off in `data-model` and `indexing`). [DDIA][DBI]
+- Size the key type for the table's ceiling. An `int4` surrogate key exhausts at ~2.1
+  billion rows and then every insert fails — an outage that arrives with no warning on a
+  table that only ever grows. Use `bigint` for any table that can grow large; widening
+  the key later is a full-table rewrite. [PG-DOCS][DBI]
 
 ## Read and write scaling
 
@@ -57,6 +61,6 @@ statement operation becomes an outage. State the row count at which the concern 
 
 Append-only table with no retention/archival; mass `DELETE` for retention instead of
 partition drop; single hot-updated counter/aggregate row; hot partition from a skewed
-key; freshness-sensitive read routed to a replica; a design implicitly requiring
-sharding with a poor shard key; large blob stored in-row; wide table on a hot read
-path.
+key; `int4` primary key on a high-growth table (exhaustion outage); freshness-sensitive
+read routed to a replica; a design implicitly requiring sharding with a poor shard key;
+large blob stored in-row; wide table on a hot read path.

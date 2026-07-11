@@ -3,6 +3,18 @@
 **Knowledge domains:** security, postgresql, prisma. (Dispatcher: read
 `references/security.md`, `references/postgresql.md`, `references/prisma.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects a defensible data layer from SQL injection, PII exposure, missing least-
@@ -24,6 +36,11 @@ isolation and integrity, because application code forgets.
 - Is any sensitive value (password, token, secret, PII) stored in the clear, or logged?
 - Does the runtime database role hold more privilege than request handling needs?
 - Can a caller set fields they should not by passing extra body keys into a write?
+- If RLS is used, is it actually in force: `FORCE ROW LEVEL SECURITY` on, the app
+  connecting as a non-owner role, and the tenant variable set with `SET LOCAL` behind a
+  pooler?
+- Does any read return secret columns (`passwordHash`, tokens) by default instead of
+  projecting with `select`/`omit`?
 
 ## Things to challenge
 
@@ -31,16 +48,20 @@ isolation and integrity, because application code forgets.
 - Why is this tenant-scoped read missing a tenant predicate, and where is RLS?
 - Why is this token/secret/PII column plaintext?
 - Why does the app connect with a role that can run DDL or read every table?
+- Why does the app connect as the table owner, which bypasses its own RLS policies?
 - Why is the request body spread straight into `data`?
 
 ## Smells and antipatterns
 
 `$queryRawUnsafe` or concatenated SQL; runtime identifier interpolated without an
-allowlist; tenant-scoped read with no tenant predicate; tenancy without RLS; plaintext
-password (should be hashed), token, secret, or PII column; secrets or decrypted values
-in logs; over-privileged runtime role; migration and runtime sharing one high-privilege
-credential; unvalidated request body spread into a create/update. See
-`references/security.md`.
+allowlist; tenant-scoped read with no tenant predicate; tenancy without RLS; RLS present
+but the app connects as the table owner or without `FORCE ROW LEVEL SECURITY`; a tenant
+session variable set without `SET LOCAL` behind a transaction pooler; a `SECURITY
+DEFINER` function without a pinned `search_path`; secret columns (`passwordHash`,
+tokens) returned by a default select; plaintext password (should be hashed), token,
+secret, or PII column; secrets or decrypted values in logs; over-privileged runtime
+role; migration and runtime sharing one high-privilege credential; unvalidated request
+body spread into a create/update. See `references/security.md`.
 
 ## Good vs bad examples
 
@@ -64,11 +85,14 @@ prisma.$queryRaw`SELECT * FROM users WHERE email = ${email}`
 prisma.invoice.findMany({ where: { tenantId, status: 'OPEN' } })
 ```
 ```sql
--- Good: enforce it in the database so it holds even when a query forgets.
+-- Good: enforce it in the database, in force even for the table owner, and set the
+-- tenant per transaction so it stays correct behind a connection pooler.
 ALTER TABLE invoice ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice FORCE ROW LEVEL SECURITY;         -- the owner is not exempt
 CREATE POLICY tenant_isolation ON invoice
   USING (tenant_id = current_setting('app.tenant_id')::int);
--- application sets app.tenant_id per request/connection.
+-- per request, inside the transaction:  SET LOCAL app.tenant_id = '<id>';
+-- and the app connects as a non-owner role that lacks BYPASSRLS.
 ```
 
 **Secrets at rest: plaintext vs hashed/encrypted**

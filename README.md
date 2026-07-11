@@ -85,6 +85,32 @@ change gets right, surfaces where two specialists disagree, and ends with a verd
   the condition under which each is right, instead of pretending there is a single
   answer.
 
+## How it works
+
+A dispatcher wakes only the lenses a change needs, each lens reasons over a shared,
+source-keyed knowledge base, every finding passes a hard evidence gate (and names the rule it
+rests on), and a synthesis step reconciles the lenses into one verdict. The full flow, with
+diagrams, is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); a complete worked review is in
+[`docs/example-review.md`](docs/example-review.md).
+
+## How Argus differs from other database-review tools
+
+Most community database agents are a single-file persona prompt. Argus is a dispatched review
+board with a contract behind it.
+
+| Capability | Typical single-file DB agent | Argus |
+| --- | --- | --- |
+| Form | one persona prompt | multi-file dispatched board |
+| Evidence gate per finding | — | ✓ |
+| Cited, tiered knowledge base | — | ✓ (every source actually used) |
+| Grounding key on each Critical/High finding | — | ✓ |
+| Severity rubric + explicit approval verdict | — | ✓ |
+| False-positive / golden-project validation | — | ✓ (reject, approve, and approve-with-conditions cases) |
+| Independent per-lens review mode | — | ✓ (`--board`) |
+
+The trade-off is deliberate: Argus is focused (PostgreSQL/Prisma) and deep, rather than broad
+and shallow.
+
 ## Meet the board
 
 Eight specialists, each with a narrow mandate and a persona:
@@ -132,6 +158,9 @@ After installing, the skill is available as `/argus:review`.
   branch changes, dispatching lenses per changed artifact.
 - **Audit mode.** Pass a path to review a whole schema or module, for example
   `/argus:review prisma/schema.prisma` or `/argus:review src/orders`.
+- **Board mode.** Add `--board` to run each engaged lens as an independent reviewer and
+  synthesize their findings — slower and costlier, for high-stakes changes. Example:
+  `/argus:review --board prisma/schema.prisma`.
 
 If a database connection and `psql` or `prisma` are available and you allow it, Argus
 can raise its confidence with read-only `EXPLAIN` and index-existence checks. It never
@@ -142,31 +171,45 @@ tells you so in the confidence reason.
 
 ```
 skills/review/
-  SKILL.md         operational contract: dispatcher, gates, report format
-  FRAMEWORK.md     philosophy contract: principles, metrics, protocols
+  SKILL.md         operational contract: dispatcher, modes, gates, report format
+  FRAMEWORK.md     philosophy contract: principles, metrics, synthesis protocol
   lenses/          reasoning: how each specialist reviews
   references/      knowledge base: distilled facts, tiered bibliography
+  evals/           machine-gradable evaluations (skill-creator schema)
 validation/
   golden-project-01/   a broken project seeded with known smells (must be rejected)
   golden-project-02/   a clean, well-built project (must be approved)
+  golden-project-03/   a correct-but-conditional project (approve with conditions)
+docs/
+  ARCHITECTURE.md      the flow and analytical approach, with diagrams
+  example-review.md    a full worked review
 ```
 
 ## Validation
 
 Argus is validated against golden projects: small, synthetic samples with a declared
-list of what a passing review must (and must not) find. Two projects ship today, and
-together they hold Argus to both halves of its job:
+list of what a passing review must (and must not) find. Three ship today, holding Argus to
+all three verdict branches:
 
 - **`golden-project-01`** seeds known smells across schema, queries, and a migration.
   A passing review surfaces every one and refuses to approve.
-- **`golden-project-02`** is genuinely well-built, with a few traps that look like
-  smells but are correct in context (a parameterized raw query, a tiny lookup table with
-  no extra index, a justified denormalization). A passing review flags none of them and
-  approves. This is the false-positive guard: it proves Argus has the restraint to say
-  "ship it," which is what makes a reviewer worth trusting.
+- **`golden-project-02`** is genuinely well-built, with traps that look like smells but are
+  correct in context (a parameterized raw query, a tiny lookup table with no extra index, a
+  justified denormalization). A passing review flags none and approves — the false-positive
+  guard that proves Argus has the restraint to say "ship it."
+- **`golden-project-03`** is correct-but-conditional: well built, but its safety depends on
+  runtime facts a static review cannot confirm (RLS wiring, a denormalized total's writer, a
+  retention job). A passing review approves *with named conditions* — the third verdict branch.
 
-See [`validation/README.md`](validation/README.md) to run the harness or add your own
-golden project.
+Two layers check this. `scripts/validate.py` runs in CI and checks structure
+deterministically (manifests, the citation graph, the lens/domain and cross-lens handoff maps,
+and that the evals stay bound to the fixtures). The reviews themselves are graded against
+[`skills/review/evals/evals.json`](skills/review/evals/evals.json) — a machine-gradable set in
+the [skill-creator](https://github.com/anthropics/claude-plugins-official) schema — with that
+plugin, or locally with `python3 scripts/run_evals.py`.
+
+See [`validation/README.md`](validation/README.md) to run the checks or add your own golden
+project.
 
 ## Contributing
 

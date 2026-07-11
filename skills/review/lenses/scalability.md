@@ -4,6 +4,18 @@
 `references/scalability.md`, `references/distributed-systems.md`,
 `references/postgresql.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects sustainable growth from designs that degrade non-linearly: unbounded tables,
@@ -25,6 +37,8 @@ becomes an outage.
   100M rows?
 - Which single-statement operation (a mass `DELETE`, a backfill, a `count`) becomes an
   outage at scale?
+- Is a high-growth table's primary key `bigint`, or an `int4` that will hit its ~2.1
+  billion ceiling and start failing every insert?
 - Does any read that needs freshness get routed somewhere that can be stale?
 
 ## Things to challenge
@@ -39,9 +53,9 @@ becomes an outage.
 
 Append-only table with no retention; mass `DELETE` for retention instead of partition
 drop; single hot-updated counter/aggregate row; hot partition from a skewed key;
-freshness-sensitive read on a replica; large blob stored in-row; wide table on a hot
-read path; a design implicitly requiring sharding with a poor shard key. See
-`references/scalability.md`.
+`int4` primary key on a high-growth table (exhaustion outage); freshness-sensitive read
+on a replica; large blob stored in-row; wide table on a hot read path; a design
+implicitly requiring sharding with a poor shard key. See `references/scalability.md`.
 
 ## Good vs bad examples
 

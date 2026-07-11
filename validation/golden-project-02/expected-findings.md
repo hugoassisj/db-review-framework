@@ -102,7 +102,9 @@ expand/contract instead of an in-place rename.
 ## Contract checks (all artifacts)
 
 - Every emitted observation, even at Info, still carries the evidence chain (finding,
-  evidence, reasoning, impact, recommendation where applicable, confidence).
+  evidence, reasoning, grounding where it clarifies, impact, recommendation where
+  applicable, confidence). The Critical/High grounding requirement is satisfied
+  vacuously here, since a passing review emits nothing above Info.
 - No invented findings. The review does not manufacture a Medium or High to look
   thorough. Restraint on clean code is the behavior under test.
 - Per-lens confidence is reported with a reason. It is High for size-independent

@@ -4,6 +4,18 @@
 `references/prisma.md`, `references/postgresql.md`, `references/modeling.md`,
 `references/engineering.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects maintainable Prisma usage from ORM anti-patterns, feature misuse, fighting the

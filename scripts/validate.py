@@ -243,6 +243,76 @@ def check_dispatch_table_lenses() -> None:
             fail(f"SKILL.md dispatch table references lens '{token}' but lenses/{token}.md is missing")
 
 
+def check_cross_lens_handoffs() -> None:
+    """Every lens named in a lens's 'Cross-lens handoffs' section must resolve to a real
+    lens or a real knowledge domain. Only hyphenated names are checked, matching the
+    dispatch-table check's rationale: multi-word lens/domain names (query-performance,
+    data-model, backend-data-access, distributed-systems) are unambiguous, while single
+    words blend into prose. This keeps the handoff graph — the framework's cross-
+    referencing backbone — from dangling silently when a lens or domain is renamed."""
+    lens_files = {p.stem for p in LENSES_DIR.glob("*.md")}
+    domain_files = {
+        p.stem for p in REFS_DIR.glob("*.md") if p.stem not in ("README", "bibliography")
+    }
+    allowed = lens_files | domain_files
+    if not lens_files:
+        return
+    for lens_path in sorted(LENSES_DIR.glob("*.md")):
+        section = re.search(
+            r"##\s*Cross-lens handoffs(.*?)(?:\n##\s|\Z)", read(lens_path), re.DOTALL
+        )
+        if not section:
+            fail(f"lenses/{lens_path.stem}.md: missing a 'Cross-lens handoffs' section")
+            continue
+        tokens = set(re.findall(r"\*\*([a-z]+(?:-[a-z]+)+)\*\*", section.group(1)))
+        for token in sorted(tokens - allowed):
+            fail(
+                f"lenses/{lens_path.stem}.md: cross-lens handoff references '{token}' "
+                f"but no such lens or knowledge domain exists"
+            )
+
+
+def check_evals_bind_to_fixtures() -> None:
+    """The eval harness (skills/review/evals/evals.json) and the golden fixtures must stay
+    bound: every entry is well-formed and points at files that exist, and every
+    validation/golden-project-* is exercised by at least one eval. Deterministic; runs no
+    LLM. Mirrors the dispatch/domain sync checks so the harness cannot silently drift from
+    the fixtures it grades."""
+    evals_path = SKILL_DIR / "evals" / "evals.json"
+    try:
+        data = json.loads(read(evals_path))
+    except (OSError, json.JSONDecodeError) as e:
+        fail(f"evals/evals.json: not valid JSON ({e})")
+        return
+    entries = data.get("evals") if isinstance(data, dict) else data
+    if not isinstance(entries, list) or not entries:
+        fail("evals/evals.json: 'evals' must be a non-empty list")
+        return
+
+    referenced: set[str] = set()
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            fail(f"evals/evals.json: entry {i} is not an object")
+            continue
+        if not entry.get("query"):
+            fail(f"evals/evals.json: entry {i} missing 'query'")
+        beh = entry.get("expected_behavior")
+        if not isinstance(beh, list) or not beh:
+            fail(f"evals/evals.json: entry {i} needs a non-empty 'expected_behavior' list")
+        files = entry.get("files")
+        if not isinstance(files, list) or not files:
+            fail(f"evals/evals.json: entry {i} needs a non-empty 'files' list")
+            continue
+        for rel in files:
+            if not (ROOT / rel).is_file():
+                fail(f"evals/evals.json: entry {i} references missing file '{rel}'")
+            referenced.add(rel)
+
+    for proj in sorted(p for p in (ROOT / "validation").glob("golden-project-*") if p.is_dir()):
+        if not any(r.startswith(f"validation/{proj.name}/") for r in referenced):
+            fail(f"evals/evals.json: no eval entry references validation/{proj.name}/")
+
+
 def check_golden_projects() -> None:
     """Every validation/golden-project-* must carry its golden file. This is
     engine-agnostic on purpose: a future non-Prisma fixture need not have a
@@ -265,6 +335,8 @@ def main() -> int:
     check_citation_integrity()
     check_lens_header_matches_map()
     check_dispatch_table_lenses()
+    check_cross_lens_handoffs()
+    check_evals_bind_to_fixtures()
     check_golden_projects()
 
     if errors:

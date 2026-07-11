@@ -78,7 +78,12 @@ unless a maintenance window and compatible rollout are explicitly stated.
 ## Contract checks (all artifacts)
 
 - Every emitted finding carries the full evidence chain (finding, evidence, reasoning,
-  impact now and at scale, recommendation, trade-offs, confidence).
+  grounding, impact now and at scale, recommendation, trade-offs, confidence).
+- Every Critical and High finding names a Grounding source key, and none rests on a
+  provenance-tier key alone (for example the plaintext password cites [OWASP-CRYPTO],
+  the injection cites [OWASP-SQLI], the composite-index order cites [UTIL]).
+- Duplicate findings are converged: a defect flagged by more than one lens appears once,
+  attributed to the corroborating lenses, not repeated.
 - No negative-constraint violation (for example: index recommendations name the query
   they serve; no approval while a Critical is open).
 - Per-lens confidence is reported with a reason (static-only here, since no live

@@ -11,7 +11,13 @@ Vendor-neutral relational facts. Sources **[SQL-STD]**, **[SPE]**, **[UTIL]**.
   referential drift accumulate silently. [DMMS][SQLAP]
 - Constraints (`NOT NULL`, `UNIQUE`, `CHECK`, FK) are the cheapest correctness
   guarantee available: enforced by the database, impossible to forget in application
-  code. A rule that should always hold belongs in a constraint, not only in code.
+  code. A rule that should always hold belongs in a constraint, not only in code. A
+  value derived from other columns that must stay consistent with them belongs in a
+  generated column, not in application code that can forget to recompute it.
+- Represent money as integer minor units (cents) or `NUMERIC(p, s)`, never binary
+  `float`/`double`: floating point cannot hold decimal fractions exactly and
+  accumulates rounding error under arithmetic. The type of a money column is a
+  correctness decision, not a formatting one. [SQLAP][SQL-STD]
 
 ## Normalization
 
@@ -59,4 +65,5 @@ Mutable or wide primary key; missing foreign key; a rule enforced only in code t
 `CHECK`/`UNIQUE` could enforce; nullable column that should be `NOT NULL`;
 duplicated fact (update anomaly) vs excessive joins (over-normalization); read-modify-
 write without atomicity or locking; default isolation assumed sufficient for a
-balance or counter.
+balance or counter; money stored in a floating-point type; a derived value maintained
+by application code where a generated column would keep it correct by construction.

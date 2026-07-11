@@ -11,7 +11,19 @@ description: >
   designing or changing a data model, auditing a schema for scale, checking a PR that
   touches the database, or when asked to review database, Prisma, schema, migration,
   indexing, query, or data-access changes.
-allowed-tools: Read, Grep, Glob, Bash, WebFetch
+argument-hint: "[path|migration|dir] [--board]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - WebFetch
+  - Task
+  - Bash(git diff:*)
+  - Bash(git status:*)
+  - Bash(git log:*)
+  - Bash(git show:*)
+  - Bash(git rev-parse:*)
+  - Bash(git ls-files:*)
 ---
 
 # Database Engineering Review Board
@@ -38,6 +50,10 @@ All paths below are relative to this skill's directory.
   directory as a whole (for example a full `schema.prisma`, a migration, or a
   service module), independent of git state.
 
+`$ARGUMENTS` may also contain the flag `--board` (with or without a path). Strip it and
+turn board mode on; the remaining argument, if any, is the audit path. See "Execution
+mode" (§2a).
+
 Identify the concrete artifacts in scope: schema models and fields, migration or
 DDL files, and query or repository or service code.
 
@@ -47,6 +63,14 @@ Do not run every lens. Determine the artifacts, then the technologies, then the
 concerns, then load only the required lens files and their declared knowledge-base
 digests. Read each selected `lenses/<lens>.md`; that file's header declares the
 `references/<domain>.md` digests to read alongside it.
+
+Read each selected lens **and each `references/<domain>.md` digest it names in
+full** — complete files, not previews or the first N lines. The reference digests
+are reached through the lens, so treat the lens header's declaration as a direct
+instruction to open those digests now; a partial read drops the exact rule and
+source key a finding must rest on (see the evidence gate, §4). Each lens and each
+long digest opens with a `## Contents` list so a glance shows the full scope
+before you read.
 
 Dispatch map:
 
@@ -65,6 +89,23 @@ target is a different engine and your confidence drops accordingly).
 Record which lenses you engaged and which you deliberately skipped, with a one-line
 reason for each skip. The report must show this.
 
+## 2a. Execution mode (single-pass or board)
+
+- **Single-pass (default).** Hold the engaged lenses in this one context and run the
+  pipeline (§3) over all of them yourself. The right choice for almost every review.
+- **Board (`--board`).** Run each engaged lens as an independent reviewer. For every
+  engaged lens, launch a subagent with the `Task` tool whose prompt is: review the
+  in-scope artifacts through *only* `lenses/<lens>.md` and the `references/<domain>.md`
+  digests that lens declares, plus the evidence gate (§4); return findings in the
+  standard chain and nothing else. Give each subagent the same artifact list; do not let
+  it read the other lenses. When all return, run the cross-lens synthesis (§6) —
+  convergence first (independent agents will flag the same defect at the same anchor),
+  then severity reconciliation and disagreement — and emit one report in the §11 format.
+  Board mode trades latency and tokens for genuine reviewer independence; use it for
+  high-stakes changes. The contract for both modes is in `FRAMEWORK.md`.
+
+State which mode ran in the report header.
+
 ## 3. Review pipeline (every engaged lens follows it)
 
 Understand intent, then constraints, then the current implementation, then
@@ -81,11 +122,17 @@ emit the finding.
 2. **Evidence** (a concrete location: `path:line`, a schema field, or a query, with
    the offending snippet).
 3. **Reasoning** (the mechanism: why this behaves badly, in engine or ORM terms).
-4. **Impact** (current impact at today's likely data size, and impact at scale;
+4. **Grounding** (the rule or source the finding rests on, cited by its bibliography
+   key, for example "[UTIL] B-tree composite-prefix rule" or "[PG-DOCS] RLS is bypassed
+   by the table owner"). **Required for Critical and High findings; recommended for the
+   rest.** A Critical or High finding must rest on at least one non-provenance-tier key
+   (see the tiering policy in `references/README.md`); provenance sources corroborate,
+   they do not carry a blocker alone.
+5. **Impact** (current impact at today's likely data size, and impact at scale;
    name the row count or growth assumption).
-5. **Recommendation** (a concrete change, with the corrected snippet where useful).
-6. **Trade-offs** (what the fix costs: write cost, storage, complexity, migration).
-7. **Confidence** (High, Medium, or Low, with the reason, per the confidence model).
+6. **Recommendation** (a concrete change, with the corrected snippet where useful).
+7. **Trade-offs** (what the fix costs: write cost, storage, complexity, migration).
+8. **Confidence** (High, Medium, or Low, with the reason, per the confidence model).
 
 ## 5. Negative constraints (MUST NOT)
 
@@ -101,18 +148,29 @@ emit the finding.
 
 ## 6. Cross-lens synthesis
 
-When two engaged lenses reach conflicting recommendations (classic case:
-query-performance recommends denormalizing a hot read path, data-model warns
-against it), do not emit both as separate contradictory findings. State both
-positions, then synthesize a single recommendation with the condition under which
-each is correct (for example: denormalize only once the read is measured hot and
-the write path can keep the copy consistent). The disagreement protocol is in
-`FRAMEWORK.md`.
+Reconcile the engaged lenses into one report, not a pile of per-lens outputs:
+
+- **Convergence (de-duplicate).** When two or more lenses flag the same defect at the
+  same evidence anchor (classic case: an unindexed foreign key wakes indexing, prisma,
+  and query-performance), emit **one** finding, attribute the lenses that corroborate it,
+  and treat the agreement as a confidence raiser. Never triple-report one defect.
+- **Severity reconciliation.** When lenses rate the same defect differently, take the
+  **highest** severity, record the dissenting view in one line, and let project stage
+  modulate it.
+- **Disagreement.** When lenses genuinely conflict (query-performance recommends
+  denormalizing a hot read path, data-model warns against it), do not emit both as
+  contradictory findings. State both positions and the value each protects, then
+  synthesize one recommendation with the condition that decides between them (for
+  example: denormalize only once the read is measured hot and the write path can keep the
+  copy consistent).
+
+The full convergence, severity, disagreement, and ordering protocol is in `FRAMEWORK.md`.
 
 ## 7. Severity
 
 Critical, High, Medium, Low, Info. Definitions are in `FRAMEWORK.md`. Rank all
-findings most severe first.
+findings most severe first. Within a severity, order by blast radius, then by evidence
+anchor (`path:line`), so repeated runs over the same input produce the same order.
 
 ## 8. Per-lens confidence
 
@@ -136,8 +194,9 @@ database is available, stay static and record that in the confidence reason.
 Do not produce the report until it satisfies every quality gate in `FRAMEWORK.md`:
 architecture explained, assumptions stated, concrete locations cited, actionable
 recommendations, strengths listed, trade-offs surfaced, findings prioritized, no
-unsynthesized contradictions, an approval decision present, and zero generic filler.
-If a gate fails, revise before emitting.
+unsynthesized contradictions, duplicate findings converged to one, every Critical and
+High finding carrying a Grounding key that is not provenance-tier alone, an approval
+decision present, and zero generic filler. If a gate fails, revise before emitting.
 
 ## 11. Report format
 
@@ -149,8 +208,10 @@ Emit the report in this structure:
    layer; proves you read it).
 3. **Assumptions** (data sizes, workload, engine, and constraints you assumed;
    these bound every impact estimate).
-4. **Lenses engaged and skipped** (the dispatch result, with a reason per skip).
-5. **Findings** (severity-ranked; each one complete per the evidence gate).
+4. **Lenses engaged and skipped** (the dispatch result, with a reason per skip; and the
+   execution mode, single-pass or board).
+5. **Findings** (severity-ranked, ties broken deterministically; each one complete per
+   the evidence gate, including its Grounding key for Critical and High).
 6. **Strengths** (what is done well and should not be changed; be specific).
 7. **Cross-lens trade-offs** (any synthesized disagreements).
 8. **Per-lens confidence** (level and reason for each engaged lens).

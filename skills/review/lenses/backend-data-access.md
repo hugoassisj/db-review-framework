@@ -4,6 +4,18 @@
 read `references/engineering.md`, `references/architecture.md`,
 `references/performance.md`, `references/prisma.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects the service and repository layer where backend code meets the database: from
@@ -24,6 +36,8 @@ database connection across a network call.
   unrelated work or external I/O?
 - Is there exactly one client and a pool sized to the database, with a checkout timeout?
 - Does any read-modify-write run without a transaction or lock (a lost-update race)?
+- Does any job/queue claim use `FOR UPDATE SKIP LOCKED` (or an advisory lock for a
+  singleton), rather than a status-flag update that races two workers onto one row?
 - Is every retryable operation (webhook, job, payment) idempotent?
 - Does any cache lack a defined invalidation path, and was it added for a measured
   bottleneck?
@@ -41,10 +55,12 @@ database connection across a network call.
 
 Multiple client/pool instances; pool sized by guess; no acquisition timeout;
 transaction held across a network/external call or think-time; read-modify-write with no
-transaction or lock; retryable operation with no idempotency key; cache with no
-invalidation; caching with no measured bottleneck; unbounded retry or no timeout on a DB
-call; offset pagination baked into a public, growing list API. See
-`references/engineering.md` and `references/architecture.md`.
+transaction or lock; a queue/claim built on a status-flag update instead of
+`FOR UPDATE SKIP LOCKED`; a singleton job with no advisory lock; retryable operation
+with no idempotency key; cache with no invalidation; caching with no measured
+bottleneck; unbounded retry or no timeout on a DB call; offset pagination baked into a
+public, growing list API. See `references/engineering.md` and
+`references/architecture.md`.
 
 ## Good vs bad examples
 

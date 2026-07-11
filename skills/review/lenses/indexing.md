@@ -3,6 +3,18 @@
 **Knowledge domains:** performance, postgresql, sql. (Dispatcher: read
 `references/performance.md`, `references/postgresql.md`, `references/sql.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects predictable query latency from missing, redundant, duplicate, and write-
@@ -42,8 +54,11 @@ For a proposed or existing index, ask:
 Missing index on a filter/join/sort key; redundant index (prefix already covered);
 duplicate index; wrong composite order (range column before equality column); indexing
 a hot-updated column; single-column index on a low-selectivity flag; index that only a
-leading-wildcard `LIKE` would use; over-indexing (an index per column "to be safe").
-See `references/postgresql.md` and `references/performance.md`.
+leading-wildcard `LIKE` would use; over-indexing (an index per column "to be safe");
+leading-wildcard `LIKE`/`ILIKE` served by a plain B-tree instead of a `pg_trgm` GIN
+index or full-text search; a hot read that could be index-only via an `INCLUDE`
+covering index but pays a heap fetch; index bloat left unaddressed (`REINDEX
+CONCURRENTLY`). See `references/postgresql.md` and `references/performance.md`.
 
 ## Good vs bad examples
 
