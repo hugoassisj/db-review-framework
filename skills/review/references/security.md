@@ -1,7 +1,8 @@
 # Knowledge: Database security
 
 Distilled DB-facing security facts. Sources **[OWASP-SQLI]**, **[OWASP-CRYPTO]**,
-**[PG-DOCS]** (RLS), **[PRISMA-DOCS]** (raw-query safety).
+**[OWASP-ASVS]** (access control, mass assignment, logging), **[PG-DOCS]** (RLS),
+**[PRISMA-DOCS]** (raw-query safety).
 
 ## Injection
 
@@ -46,7 +47,7 @@ Distilled DB-facing security facts. Sources **[OWASP-SQLI]**, **[OWASP-CRYPTO]**
 
 - Passing an unvalidated request body straight into a create/update lets a caller set
   fields they should not (role, ownerId, isAdmin, balance). Select the writable fields
-  explicitly; do not spread untrusted input into a write. [OWASP-SQLI]
+  explicitly; do not spread untrusted input into a write. [OWASP-ASVS]
 
 ## Watch-list
 
