@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Deterministic structural checks for the db-review plugin.
+"""Deterministic structural checks for the Argus plugin.
 
-Runs in CI and locally. Does NOT run the LLM review — it only verifies that the
+Runs in CI and locally. Does NOT run the LLM review. It only verifies that the
 plugin manifests, the skill contract, and the lens/knowledge maps are internally
 consistent, so a rename or version drift fails fast.
 
@@ -144,18 +144,33 @@ def check_lens_and_domain_consistency() -> None:
                 )
 
 
+def check_golden_projects() -> None:
+    """Every validation/golden-project-* must carry its golden file. This is
+    engine-agnostic on purpose: a future non-Prisma fixture need not have a
+    schema.prisma, but it must declare what a passing review produces."""
+    val_dir = ROOT / "validation"
+    projects = sorted(p for p in val_dir.glob("golden-project-*") if p.is_dir())
+    if not projects:
+        fail("validation/: no golden-project-* directories found")
+        return
+    for proj in projects:
+        if not (proj / "expected-findings.md").is_file():
+            fail(f"validation/{proj.name}: missing expected-findings.md")
+
+
 def main() -> int:
     plugin = check_json_manifests()
     check_version_matches_changelog(plugin)
     check_skill_frontmatter()
     check_lens_and_domain_consistency()
+    check_golden_projects()
 
     if errors:
-        print("FAIL: db-review structural validation")
+        print("FAIL: Argus structural validation")
         for e in errors:
             print(f"  - {e}")
         return 1
-    print("OK: db-review structural validation passed")
+    print("OK: Argus structural validation passed")
     return 0
 
 

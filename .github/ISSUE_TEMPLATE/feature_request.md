@@ -1,5 +1,5 @@
 ---
-name: Feature request — new lens, knowledge, or golden project
+name: Feature request (new lens, knowledge, or golden project)
 about: Propose a new review lens, a knowledge-base addition, or a benchmark fixture
 title: "[feature] "
 labels: enhancement
@@ -16,7 +16,7 @@ assignees: ''
 ## What gap does this close
 
 What class of database defect is currently missed, or what engine/ORM/domain is
-under-covered? Be specific — name the smell or access pattern.
+under-covered? Be specific, and name the smell or access pattern.
 
 ## Proposed approach
 

@@ -1,0 +1,104 @@
+// Golden project 02: a synthetic Prisma + PostgreSQL schema that is deliberately
+// well-built. This is the approve-case fixture. A few constructs look like smells but
+// are correct in context; those are the false-positive traps listed in
+// expected-findings.md. A passing review flags none of them and approves, with the one
+// documented condition. This is a test fixture, not a template to copy blindly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  CANCELLED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  // GOOD(data-model, security): the login identity is unique and required, and the
+  // stored credential is an argon2id hash, never the plaintext password.
+  email        String   @unique
+  passwordHash String
+  orders       Order[]
+  account      Account?
+  createdAt    DateTime @default(now())
+}
+
+model Account {
+  id           Int  @id @default(autoincrement())
+  ownerId      Int  @unique
+  owner        User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  // GOOD(backend-data-access): the balance is mutated only through an atomic guarded
+  // update (see debit() in queries.ts), so concurrent debits cannot race.
+  balanceCents Int  @default(0)
+}
+
+model Country {
+  // GOOD/TRAP(indexing): a small, static ISO 3166-1 lookup (around 250 rows). The
+  // primary key is the only index it needs. Nothing filters on name, and scanning 250
+  // rows is cheaper than maintaining another index. Do not recommend adding one.
+  code   String  @id // alpha-2, e.g. "US"
+  name   String
+  orders Order[]
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  customerId        Int
+  // GOOD(prisma): the referential action is explicit. A customer with orders cannot be
+  // hard-deleted out from under them.
+  customer          User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  // GOOD(data-model): status is a bounded enum, not free text.
+  status            OrderStatus @default(PENDING)
+  // GOOD/TRAP(data-model): totalCents is a denormalized cache of the sum of the line
+  // items. It is written in the same transaction as those line items (see createOrder()
+  // in queries.ts), so it cannot drift. This is a justified denormalization, not a
+  // normalization violation.
+  totalCents        Int
+  shipToCountryCode String
+  shipToCountry     Country     @relation(fields: [shipToCountryCode], references: [code], onDelete: Restrict)
+  // GOOD/TRAP(data-model): an opaque payment-provider payload. Nothing is ever filtered
+  // or sorted on a field inside it, so it does not need to be promoted to columns.
+  metadata          Json
+  lineItems         LineItem[]
+  createdAt         DateTime    @default(now())
+
+  // GOOD(indexing): correct composite order for WHERE customerId = ? ORDER BY createdAt
+  // DESC. The equality column leads and the sort column follows, so the index both
+  // drives the filter and returns rows already ordered.
+  @@index([customerId, createdAt(sort: Desc)])
+  // GOOD(indexing): the country FK is indexed because ordersByCountry() filters on it.
+  @@index([shipToCountryCode])
+}
+
+model LineItem {
+  id             Int    @id @default(autoincrement())
+  orderId        Int
+  order          Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku            String
+  quantity       Int
+  unitPriceCents Int
+
+  // GOOD(indexing): line items are always read by their order, and the FK is indexed.
+  @@index([orderId])
+}
+
+model Event {
+  id        BigInt   @id @default(autoincrement())
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  // GOOD/TRAP(scalability): append-only, but bounded. Rows older than 90 days are pruned
+  // by a scheduled retention job (see the ops runbook), and createdAt is indexed for
+  // both the prune and time-range reads. The reviewer cannot see that job from the
+  // schema, so its existence is the one open condition on approval.
+  @@index([createdAt])
+}
