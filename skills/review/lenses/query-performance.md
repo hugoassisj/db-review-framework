@@ -4,6 +4,18 @@
 `references/performance.md`, `references/postgresql.md`, `references/sql.md`,
 `references/prisma.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects efficient query execution from N+1, over-fetch, offset pagination, count-in-

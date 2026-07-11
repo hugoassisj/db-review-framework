@@ -1,0 +1,97 @@
+// Golden project 03 — multi-tenant SaaS billing.
+//
+// This fixture is CORRECT-BUT-CONDITIONAL. It is well built, but its safety rests on
+// runtime facts a static review cannot confirm: that RLS is wired up correctly at
+// runtime, that a denormalized total is only written through the safe path, and that a
+// retention job is actually scheduled. The expected verdict is "Approve with conditions".
+//
+// Synthetic. Do not copy into a real project.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id            BigInt         @id @default(autoincrement())
+  name          String
+  createdAt     DateTime       @default(now()) @db.Timestamptz
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  usageEvents   UsageEvent[]
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id         BigInt             @id @default(autoincrement())
+  tenantId   BigInt
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status     SubscriptionStatus @default(TRIALING)
+  priceCents Int
+  createdAt  DateTime           @default(now()) @db.Timestamptz
+
+  @@index([tenantId])
+}
+
+model Invoice {
+  id       BigInt @id @default(autoincrement())
+  tenantId BigInt
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Denormalized cache of SUM(lineItems.amountCents). Written in the same transaction as
+  // the line items (see createInvoice in queries.ts), so it cannot drift from them.
+  totalCents Int
+  // Free-text status. This is the one genuine (non-blocking) modeling finding in this
+  // fixture: it should be an enum or lookup, exactly like SubscriptionStatus above.
+  status    String
+  issuedAt  DateTime   @default(now()) @db.Timestamptz
+  lineItems LineItem[]
+  payments  Payment[]
+
+  @@index([tenantId, issuedAt(sort: Desc)])
+}
+
+model LineItem {
+  id          BigInt  @id @default(autoincrement())
+  invoiceId   BigInt
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  amountCents Int
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id              BigInt   @id @default(autoincrement())
+  invoiceId       BigInt
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amountCents     Int
+  // Idempotency key: a redelivered provider webhook maps to the same payment.
+  providerEventId String   @unique
+  paidAt          DateTime @default(now()) @db.Timestamptz
+
+  @@index([invoiceId])
+}
+
+// High-growth, append-only usage stream. Retention is described in a comment only; whether
+// the prune job is actually scheduled is a runtime fact this review cannot verify.
+model UsageEvent {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   BigInt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  metric     String
+  quantity   Int
+  occurredAt DateTime @default(now()) @db.Timestamptz
+  // Retention: a scheduled job prunes rows older than 90 days (not visible here).
+
+  @@index([tenantId, occurredAt])
+}

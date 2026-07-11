@@ -16,10 +16,15 @@ skills/review/
   FRAMEWORK.md     philosophy contract: principles, metrics, protocols
   lenses/          reasoning: how each specialist reviews
   references/      knowledge base: distilled facts, tiered bibliography
+  evals/           machine-gradable evaluations (skill-creator schema)
 validation/
   golden-project-NN/   a synthetic project seeded with known smells, plus the
                        findings a passing review must surface
+docs/                  ARCHITECTURE.md (the flow, with diagrams) and a worked example
 ```
+
+New here? [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains the flow and analytical
+approach end to end.
 
 The guiding split: **lenses hold reasoning** (how to review), **references hold
 facts** (what is true). Keep them separate. See
@@ -55,8 +60,10 @@ the provenance tier alone. See
 
 Create `validation/golden-project-NN/` with a small, **synthetic** sample project and
 an `expected-findings.md` written first, so the fixture is built to prove specific
-behavior. See the **"How to add a golden project"** section of
-[`skills/review/FRAMEWORK.md`](skills/review/FRAMEWORK.md) and
+behavior, and add an entry for it to
+[`skills/review/evals/evals.json`](skills/review/evals/evals.json) (the deterministic
+eval↔fixture check in CI fails otherwise). See the **"How to add a golden project"**
+section of [`skills/review/FRAMEWORK.md`](skills/review/FRAMEWORK.md) and
 [`validation/README.md`](validation/README.md). Never commit a real, proprietary
 schema.
 

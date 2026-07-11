@@ -3,6 +3,18 @@
 **Knowledge domains:** migrations, postgresql, engineering. (Dispatcher: read
 `references/migrations.md`, `references/postgresql.md`, `references/engineering.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects safe production deployments from long locks, table rewrites, breaking
@@ -18,6 +30,8 @@ at peak. You assume traffic is live and the old application version is still run
 ## Heuristics
 
 - What lock does each statement take, and for how long, against how large a table?
+- Does each DDL statement run under a short `lock_timeout`, so a lock wait fails fast
+  instead of queueing all subsequent traffic behind it?
 - Is the new schema compatible with the *currently running* application, and the new
   application with the *old* schema during rollout?
 - Is any operation irreversible (a dropped column's data), and does it have a
@@ -27,6 +41,8 @@ at peak. You assume traffic is live and the old application version is still run
 
 ## Things to challenge
 
+- Why run this `ALTER` with no `lock_timeout`, when a lock wait would block every query
+  that queues behind it?
 - Why `CREATE INDEX` and not `CREATE INDEX CONCURRENTLY` on a live table?
 - Why this type change, if it rewrites the whole table under an exclusive lock?
 - Why add `NOT NULL`/FK directly instead of `NOT VALID` then `VALIDATE`?
@@ -35,11 +51,12 @@ at peak. You assume traffic is live and the old application version is still run
 
 ## Smells and antipatterns
 
-`CREATE INDEX` without `CONCURRENTLY` on a live table; table-rewriting `ALTER TABLE`;
-`NOT NULL`/FK added without `NOT VALID`; unbatched backfill; a rename or type change as
-a flag-day; a `DROP` with no deprecation period; no rollback plan; schema drift between
-the migration history and the database, or between two schema copies. See
-`references/migrations.md`.
+`CREATE INDEX` without `CONCURRENTLY` on a live table; DDL run without a `lock_timeout`
+(lock-queue pileup); table-rewriting `ALTER TABLE`; `NOT NULL`/FK added without
+`NOT VALID` (a foreign key locks both tables); an enum `ALTER TYPE … ADD VALUE` treated
+as routine; unbatched backfill; a rename or type change as a flag-day; a `DROP` with no
+deprecation period; no rollback plan; schema drift between the migration history and the
+database, or between two schema copies. See `references/migrations.md`.
 
 ## Good vs bad examples
 
@@ -53,6 +70,19 @@ CREATE INDEX idx_orders_customer ON orders (customer_id, created_at);
 -- Good: does not block writes. Runs outside a transaction (so it needs a hand-edited
 -- Prisma migration, since Migrate wraps steps in a transaction).
 CREATE INDEX CONCURRENTLY idx_orders_customer ON orders (customer_id, created_at);
+```
+
+**Guard every DDL with `lock_timeout`**
+
+```sql
+-- Bad: this ALTER waits for ACCESS EXCLUSIVE; while it waits, every new query queues
+-- behind it. One long-running transaction turns a metadata change into an outage.
+ALTER TABLE orders ADD COLUMN region text;
+```
+```sql
+-- Good: fail fast on a lock wait and retry, so traffic is never blocked behind the DDL.
+SET lock_timeout = '2s';
+ALTER TABLE orders ADD COLUMN region text;   -- aborts if it cannot lock quickly; retry
 ```
 
 **Adding a NOT NULL column safely**

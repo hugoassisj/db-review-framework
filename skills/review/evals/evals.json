@@ -1,0 +1,122 @@
+{
+  "_comment": "Machine-gradable evaluations for the Argus `review` skill, in the skill-creator schema (skills / query / files / expected_behavior). One entry per golden-project fixture, with a final board-mode entry. Each expected_behavior item is an assertion derived from that fixture's expected-findings.md; grade the review output against them. Run with the skill-creator plugin (`/plugin install skill-creator@claude-plugins-official`, then ask it to evaluate the review skill), or with scripts/run_evals.py for a local end-to-end pass. scripts/validate.py checks (deterministically, no LLM) that these entries stay bound to the fixtures on disk.",
+  "evals": [
+    {
+      "name": "gp01-schema-reject",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-01/schema.prisma",
+      "files": ["validation/golden-project-01/schema.prisma"],
+      "expected_behavior": [
+        "Dispatches data-model, indexing, prisma, scalability, and security; states which lenses it skipped and why.",
+        "Flags the plaintext User.password as Critical and refuses to approve while it is open.",
+        "Flags the plaintext ApiCredential.apiSecret, the nullable non-unique User.email, and the wrong composite index order on Order as High.",
+        "Every Critical and High finding carries a Grounding source key that is not provenance-tier alone.",
+        "The final approval decision is 'Do not approve', listing the Critical and High findings as blockers."
+      ]
+    },
+    {
+      "name": "gp01-queries-reject",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-01/queries.ts",
+      "files": ["validation/golden-project-01/queries.ts"],
+      "expected_behavior": [
+        "Dispatches query-performance, backend-data-access, and prisma, plus security for the raw query.",
+        "Flags the $queryRawUnsafe SQL injection as Critical.",
+        "Flags the read-modify-write lost-update race in debit, the N+1 in listPostAuthors, and the per-call new PrismaClient() as High.",
+        "The final approval decision is 'Do not approve'."
+      ]
+    },
+    {
+      "name": "gp01-migration-reject",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-01/migration.sql",
+      "files": ["validation/golden-project-01/migration.sql"],
+      "expected_behavior": [
+        "Dispatches migrations and indexing; references scalability for the populated-table backfill.",
+        "Flags the blocking CREATE INDEX, the NOT NULL column add that validates under lock, and the flag-day password->password_hash rename as High.",
+        "The final approval decision is 'Do not approve' unless a maintenance window and compatible rollout are explicitly stated."
+      ]
+    },
+    {
+      "name": "gp02-schema-approve",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-02/schema.prisma",
+      "files": ["validation/golden-project-02/schema.prisma"],
+      "expected_behavior": [
+        "Emits nothing above Info; does not manufacture a Medium or High to look thorough.",
+        "Does NOT flag the denormalized Order.totalCents, the opaque Order.metadata Json, or the un-indexed tiny Country lookup table.",
+        "Recognizes strengths (unique required email, passwordHash, enum status, explicit onDelete, correct composite index order).",
+        "Ends in Approve or Approve with conditions limited to confirming the Event retention job."
+      ]
+    },
+    {
+      "name": "gp02-queries-approve",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-02/queries.ts",
+      "files": ["validation/golden-project-02/queries.ts"],
+      "expected_behavior": [
+        "Emits nothing above Info.",
+        "Does NOT flag the parameterized $queryRaw, the atomic guarded debit updateMany, the shared PrismaClient, or the keyset eventPage.",
+        "The final approval decision is Approve."
+      ]
+    },
+    {
+      "name": "gp02-migration-approve",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-02/migration.sql",
+      "files": ["validation/golden-project-02/migration.sql"],
+      "expected_behavior": [
+        "Emits nothing above Info.",
+        "Does NOT flag the CREATE INDEX CONCURRENTLY, the add-nullable-then-VALIDATE pattern, or the expand/contract rename.",
+        "The final approval decision is Approve."
+      ]
+    },
+    {
+      "name": "gp03-schema-approve-with-conditions",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-03/schema.prisma",
+      "files": ["validation/golden-project-03/schema.prisma"],
+      "expected_behavior": [
+        "Dispatches data-model, indexing, prisma, scalability, and security; states its skips and the execution mode.",
+        "Emits no Critical and no unresolved High.",
+        "Flags the free-text Invoice.status as a Medium (should be an enum/lookup) and grounds it in a source key.",
+        "Does NOT flag the integer-cents money columns, the timestamptz timestamps, the BigInt primary keys, the transactionally-written denormalized totalCents, or the payment idempotency key.",
+        "Surfaces the RLS-wiring, denormalized-total-consistency, and UsageEvent-retention assumptions as explicit conditions, not as blockers.",
+        "The final approval decision is 'Approve with conditions', naming those conditions."
+      ]
+    },
+    {
+      "name": "gp03-queries-approve",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-03/queries.ts",
+      "files": ["validation/golden-project-03/queries.ts"],
+      "expected_behavior": [
+        "Emits nothing above Info.",
+        "Does NOT flag the parameterized revenueByTenant $queryRaw, the shared PrismaClient, the keyset listInvoices, or the atomic createInvoice transaction.",
+        "The final approval decision is Approve."
+      ]
+    },
+    {
+      "name": "gp03-migration-approve",
+      "skills": ["review"],
+      "query": "/argus:review validation/golden-project-03/migration.sql",
+      "files": ["validation/golden-project-03/migration.sql"],
+      "expected_behavior": [
+        "Emits nothing above Info.",
+        "Does NOT flag the lock_timeout guard, the CREATE INDEX CONCURRENTLY, or the ENABLE + FORCE ROW LEVEL SECURITY policy.",
+        "Carries the runtime RLS wiring forward as a condition rather than assuming it."
+      ]
+    },
+    {
+      "name": "gp01-schema-board-mode",
+      "skills": ["review"],
+      "query": "/argus:review --board validation/golden-project-01/schema.prisma",
+      "files": ["validation/golden-project-01/schema.prisma"],
+      "expected_behavior": [
+        "Runs in board mode: dispatches one independent subagent per engaged lens and states the mode in the report header.",
+        "Converges duplicate findings (e.g. an unindexed foreign key raised by more than one lens) into a single attributed finding rather than repeating it.",
+        "Reaches the same blockers and 'Do not approve' verdict as the single-pass run of the same fixture."
+      ]
+    }
+  ]
+}

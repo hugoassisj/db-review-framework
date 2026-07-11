@@ -3,6 +3,18 @@
 **Knowledge domains:** modeling, sql, architecture. (Dispatcher: read
 `references/modeling.md`, `references/sql.md`, `references/architecture.md`.)
 
+## Contents
+
+- Protection scope
+- Persona
+- Heuristics
+- Things to challenge
+- Smells and antipatterns
+- Good vs bad examples
+- Trade-off catalog
+- Cross-lens handoffs
+- References
+
 ## Protection scope
 
 Protects a healthy domain model from duplicated concepts, nullable abuse, missing
@@ -26,6 +38,9 @@ constraint before a comment.
   application code?
 - Would this model survive the obvious next requirement, or does it hard-code today's
   assumption?
+- Every type: is money an integer minor unit or `NUMERIC` (never `float`), is every
+  timestamp `timestamptz`, is a high-growth primary key `bigint` not `int4`, and does a
+  churning domain use a lookup table rather than a rigid native `enum`?
 
 ## Things to challenge
 
@@ -43,8 +58,12 @@ Comma-separated list in a column (jaywalking); generic key-value or wide `Json` 
 (EAV); a type column plus one nullable FK (polymorphic association); `parent_id`-only
 tree with hot subtree reads; wrong cardinality; missing foreign key; nullable-that-
 should-not-be; free text where an enum or lookup belongs; duplicated fact (update
-anomaly); missing `created_at`/`updated_at` on a mutable business table. Details and
-sources in `references/modeling.md`.
+anomaly); missing `created_at`/`updated_at` on a mutable business table; money stored
+in a floating-point type; naive `timestamp` instead of `timestamptz`; `int4` primary
+key on a table that will grow large; a native `enum` for a domain that will churn (a
+lookup table evolves more safely); a derived value maintained in application code where
+a generated column would keep it correct. Details and sources in
+`references/modeling.md` and `references/sql.md`.
 
 ## Good vs bad examples
 

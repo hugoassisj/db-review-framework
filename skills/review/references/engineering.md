@@ -35,6 +35,11 @@ the database. Sources **[RELEASEIT]**, **[HPJP]**, **[APOSD]**.
 - **Pessimistic locking:** `SELECT … FOR UPDATE` takes the row lock up front. Best for
   high-contention hotspots, at the cost of serializing on the lock. Choose per the
   contention profile; state which and why. [HPJP]
+- **Queue and claim patterns:** a worker pool that claims rows should use
+  `SELECT … FOR UPDATE SKIP LOCKED`, so each worker takes rows no other worker has
+  locked, instead of a status-flag `UPDATE` that races two workers onto the same job.
+  For app-level mutual exclusion (a singleton cron, a keyed critical section) use a
+  PostgreSQL advisory lock rather than inventing a lock row. [PG-DOCS][HPJP]
 - Idempotency: any operation that can be retried (a webhook, a job, a payment) needs an
   idempotency key or a natural unique constraint so a retry does not double-apply.
 
@@ -62,7 +67,8 @@ the database. Sources **[RELEASEIT]**, **[HPJP]**, **[APOSD]**.
 
 Multiple client/pool instances; pool sized by guess, not to the database; no pool
 acquisition timeout; transaction held across a network/external call or user think-
-time; read-modify-write with no transaction or lock; retryable operation with no
+time; read-modify-write with no transaction or lock; a queue/claim built on a
+status-flag `UPDATE` instead of `FOR UPDATE SKIP LOCKED`; retryable operation with no
 idempotency key; cache with no invalidation path; caching added without a measured
 bottleneck; no timeout or unbounded retry on a database call; offset pagination baked
 into a public, growing list API.

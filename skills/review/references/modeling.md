@@ -42,7 +42,12 @@ Distilled modeling facts and named antipatterns. Sources **[SQLAP]**, **[DMMS]**
   Nullable-that-should-not-be pushes ambiguity onto every reader. Prefer `NOT NULL`
   with a sensible default. [DMMS][SQL-STD]
 - Enumerated domains belong in an enum or a lookup table with a FK, not a free-text
-  column that drifts into "active", "Active", "ACTIVE".
+  column that drifts into "active", "Active", "ACTIVE". Between the two: a database
+  `enum` is compact and self-documenting but rigid to evolve (values cannot be removed
+  or reordered, and adding one has transaction limits on PostgreSQL); a lookup table
+  with a FK costs a join but lets you add, deprecate, and annotate values freely and can
+  carry metadata. Prefer the enum for a small, stable, closed set; the lookup table when
+  the domain will change or needs attributes. [PG-DOCS][DMMS]
 
 ## JSON columns
 

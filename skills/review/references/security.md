@@ -22,6 +22,15 @@ Distilled DB-facing security facts. Sources **[OWASP-SQLI]**, **[OWASP-CRYPTO]**
   isolation holds even when a query forgets the filter. Prefer RLS (or a per-tenant
   schema/database) for hard isolation. [PG-DOCS]
 - Any query that reads a tenant-scoped table without a tenant predicate is a finding.
+- **RLS only protects roles that are subject to it.** The table owner, roles with
+  `BYPASSRLS`, and superusers bypass RLS entirely, so an application that connects as the
+  table owner gets no protection from its own policies. Enable `FORCE ROW LEVEL SECURITY`
+  and connect as a dedicated non-owner role. Recommending RLS without this is a false
+  sense of safety, not defense in depth. [PG-DOCS]
+- When RLS keys off a per-request session variable and a transaction-mode pooler
+  (PgBouncer, Prisma Accelerate) sits in front, set the variable with `SET LOCAL` inside
+  the transaction. A plain `SET` outlives the request and leaks to whichever tenant next
+  reuses the pooled connection. [PG-DOCS][PRISMA-DOCS]
 
 ## Data at rest and PII
 
@@ -42,6 +51,16 @@ Distilled DB-facing security facts. Sources **[OWASP-SQLI]**, **[OWASP-CRYPTO]**
   with superuser or broad `DDL` rights used for ordinary request handling widens the
   blast radius of any injection or bug. Separate migration credentials from runtime
   credentials. [PG-DOCS]
+- A `SECURITY DEFINER` function runs with its owner's privileges; pin its `search_path`
+  (for example `SET search_path = pg_catalog, public`) or a caller can shadow an object
+  the function references and run code as the owner. [PG-DOCS][OWASP-ASVS]
+
+## Selecting secret columns
+
+- Do not return secret columns by default. Prisma's default query returns every scalar
+  of a model, including `passwordHash`, tokens, and other secrets, so a route that
+  serializes a fetched user can leak them. Use `select`/`omit` to project only the
+  non-secret fields on any read whose result crosses a trust boundary. [PRISMA-DOCS][OWASP-ASVS]
 
 ## Mass assignment at the data layer
 
@@ -52,7 +71,11 @@ Distilled DB-facing security facts. Sources **[OWASP-SQLI]**, **[OWASP-CRYPTO]**
 ## Watch-list
 
 `$queryRawUnsafe` or string-concatenated SQL; runtime identifier interpolated without
-an allowlist; tenant-scoped read with no tenant predicate; tenancy without RLS;
+an allowlist; tenant-scoped read with no tenant predicate; tenancy without RLS; RLS
+present but the app connects as the table owner or without `FORCE ROW LEVEL SECURITY`;
+a tenant session variable set without `SET LOCAL` behind a transaction-mode pooler;
+`SECURITY DEFINER` function without a pinned `search_path`; secret columns
+(`passwordHash`, tokens) returned by a default select across a trust boundary;
 plaintext password (should be hashed), token, secret, or PII column; secrets or
 decrypted values in logs; runtime role with excessive privileges; migration and
 runtime sharing one high-privilege credential; unvalidated request body spread into a

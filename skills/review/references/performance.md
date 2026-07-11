@@ -11,7 +11,9 @@ Distilled query and access-path performance. Sources **[UTIL]**, **[SPE]**,
 - An index-only scan (covering index) answers a query entirely from the index without
   touching the heap, when the index contains every column the query needs and the
   visibility map allows it. Adding a rarely-changing column to an index to make a hot
-  read index-only is a real win; doing it for a cold read is waste. [UTIL][PG-DOCS]
+  read index-only is a real win; doing it for a cold read is waste. On PostgreSQL 11+
+  attach the payload column with `INCLUDE` so it rides in the index leaf without
+  changing the key order (see `postgresql.md`). [UTIL][PG-DOCS]
 
 ## The N+1 problem
 

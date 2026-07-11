@@ -1,11 +1,32 @@
 # Database Engineering Review Framework
 
-**Contract version: 1.0.0**
+**Contract version: 1.1.0**
 
 This is the binding contract that every lens and every review conforms to. The
 `SKILL.md` file is the operational procedure; this file is the philosophy,
 rubrics, and protocols it enforces. When a lens and this contract disagree, this
 contract wins.
+
+## Contents
+
+- Vision
+- What each reviewer protects
+- Engineering principles
+- Review methodology
+- Severity rubric
+- Evidence requirement
+- Negative constraints
+- Quality gates
+- Confidence model
+- Project-stage modulation
+- Cross-lens synthesis protocol (convergence, severity, disagreement)
+- Finding ordering
+- Approval decision framework
+- Success metrics
+- How to add a lens
+- How to add a golden project
+- Execution modes (single-pass and board)
+- Changelog
 
 ## Vision
 
@@ -79,12 +100,20 @@ The pipeline, in order, for the whole review and within each lens:
 ## Evidence requirement
 
 No finding without evidence. Every finding carries the full chain (finding,
-evidence, reasoning, impact, recommendation, trade-offs, confidence). A finding
-missing any link is dropped, not softened. This is what separates a review from a
-checklist. "Consider adding an index" is not a finding; "the `orders` list query
+evidence, reasoning, grounding, impact, recommendation, trade-offs, confidence). A
+finding missing any link is dropped, not softened. This is what separates a review from
+a checklist. "Consider adding an index" is not a finding; "the `orders` list query
 filters on `customerId` and sorts by `createdAt` (orders.repository.ts:42) but only
 a single-column index on `customerId` exists, so the sort falls back to a heap sort
 that grows with the customer's order count" is.
+
+**Grounding makes the knowledge base visible in the output.** Every Critical and High
+finding must name the rule or source it rests on, cited by its bibliography key (for
+example "[UTIL] B-tree composite-prefix rule"). The knowledge base already grounds the
+reviewer's *reasoning*; the Grounding link makes that legible in each *finding*, so a
+reader can tell an evidence-based claim from an assertion. A Critical or High finding may
+not rest on a provenance-tier key alone (see the tiering policy); provenance corroborates,
+it does not carry a blocker.
 
 ## Negative constraints
 
@@ -111,10 +140,13 @@ emitting; if any gate fails, revise.
 4. Produces actionable recommendations.
 5. Includes strengths (what not to change).
 6. Surfaces trade-offs.
-7. Prioritizes findings by severity.
+7. Prioritizes findings by severity, with ties broken deterministically.
 8. Contains no contradictory recommendations unless explicitly synthesized.
-9. Produces an approval decision.
-10. Contains no generic filler.
+9. Grounds every Critical and High finding in a source key that is not provenance-tier
+   alone.
+10. Converges duplicate findings (the same defect flagged by multiple lenses) into one.
+11. Produces an approval decision.
+12. Contains no generic filler.
 
 ## Confidence model
 
@@ -142,19 +174,40 @@ The same finding carries different weight by stage. State which stage you assume
 - **Enterprise:** favor observability, auditability, backward compatibility, and
   operational safety. Migration safety and security findings escalate.
 
-## Cross-lens disagreement protocol
+## Cross-lens synthesis protocol (convergence, severity, disagreement)
 
-Reviewers are expected to disagree; that is the point of a board. When engaged
-lenses conflict:
+The board produces one report, not a stack of per-lens outputs. Three rules reconcile
+the engaged lenses.
+
+**Convergence (de-duplicate).** Multiple lenses legitimately flag the same defect — an
+unindexed foreign key wakes indexing, prisma, and query-performance at once. Emit one
+finding per defect (keyed by its evidence anchor), attribute every lens that corroborates
+it, and treat independent agreement as a reason to raise confidence, not to repeat the
+finding. This rule is load-bearing in board mode, where independent lens agents overlap
+by design.
+
+**Severity reconciliation.** When lenses rate the same defect differently, the finding
+takes the highest proposed severity. Record the dissent in one line, and let
+project-stage modulation adjust from there.
+
+**Disagreement.** Reviewers are expected to disagree; that is the point of a board. When
+engaged lenses conflict on the recommendation itself:
 
 1. State each position and the value it protects.
-2. Identify the condition that decides between them (usually a measurement: is the
-   read actually hot, is the table actually large, is the write path able to keep a
+2. Identify the condition that decides between them (usually a measurement: is the read
+   actually hot, is the table actually large, is the write path able to keep a
    denormalized copy consistent).
 3. Synthesize one recommendation that names that condition.
 
 Never ship two contradictory recommendations unsynthesized. A real board reaches a
 position; it does not hand the developer an argument to referee.
+
+## Finding ordering
+
+Rank findings most-severe-first. Within a severity, order by blast radius (how much data
+or how many code paths the defect affects), then by evidence anchor (`path:line`). The
+tiebreak is deterministic, so repeated runs over the same input produce the same order —
+one of the framework's success metrics.
 
 ## Approval decision framework
 
@@ -195,15 +248,27 @@ The framework succeeds when:
 
 See `validation/README.md`. A golden project is a self-contained sample that seeds
 known smells and declares, in `expected-findings.md`, the findings a passing review
-must surface. Golden projects are synthetic; never commit a real proprietary schema.
+must surface. Add an entry for each new fixture to `skills/review/evals/evals.json` so
+the deterministic eval↔fixture binding check stays green. Golden projects are synthetic;
+never commit a real proprietary schema.
 
-## Upgrade path (not in v1)
+## Execution modes (single-pass and board)
 
-v1 runs the board single-pass: one reasoner holds the engaged lenses and surfaces
-disagreements in one report. The documented upgrade is a subagent board: each lens
-runs as an independent agent that reviews in isolation, then a synthesizer reconciles
-their findings. It is more faithful to true independence but slower and costlier per
-run, so it is deferred until the single-pass output measurably falls short.
+Argus runs in one of two modes; both produce the same report format and obey the same
+gates.
+
+- **Single-pass (default).** One reasoner holds the engaged lenses and applies the
+  synthesis protocol in one context. Fast and cheap; the right default for almost every
+  review.
+- **Board (`--board`).** Each engaged lens runs as an independent subagent that reviews
+  in isolation with only its lens and declared references, then the main context runs the
+  convergence, severity, and disagreement protocol over their outputs. More faithful to
+  true reviewer independence — a lens cannot be anchored by another's conclusion — at the
+  cost of more latency and tokens per run. Use it for high-stakes changes or when a
+  single-pass review feels anchored. The convergence rule is what keeps independent
+  agents from triple-reporting the same defect.
+
+The operational trigger and per-lens dispatch for both modes are in `SKILL.md`.
 
 ## Changelog
 

@@ -26,6 +26,18 @@ application, or the reverse). Every migration is reviewed for both. [REFDB]
   weaker lock. [PG-DOCS]
 - Long transactions and large single-statement backfills hold locks and bloat WAL;
   backfill in bounded batches. [PG-DOCS][REFDB]
+- **Set a short `lock_timeout` before a DDL statement and retry on timeout.** A statement
+  waiting for `ACCESS EXCLUSIVE` blocks every query that queues behind it, so an `ALTER`
+  that waits on one long-running transaction can freeze the whole table even when the
+  `ALTER` itself is instant. `lock_timeout` makes the migration fail fast and retry
+  instead of stalling production traffic. This is the difference between a safe metadata
+  change and a self-inflicted outage. [PG-DOCS][GITHUB-ENG]
+- Adding a foreign key locks both the referencing and referenced tables and validates
+  existing rows. Add it `NOT VALID`, then `VALIDATE CONSTRAINT` in a separate step — the
+  same expand-then-validate split used for `NOT NULL`. [PG-DOCS]
+- Enum changes are a schema-evolution risk: `ALTER TYPE … ADD VALUE` has transaction
+  restrictions and cannot remove or reorder values. Prefer a lookup table when the domain
+  churns (see `modeling.md`). [PG-DOCS]
 
 ## Expand and contract (parallel change)
 
@@ -61,7 +73,8 @@ code the instant it commits; expand/contract avoids the flag-day.
 ## Watch-list
 
 `CREATE INDEX` without `CONCURRENTLY` on a live table; table-rewriting `ALTER TABLE`;
-`NOT NULL`/FK added without `NOT VALID`; unbatched backfill in one statement; a
-rename or type change done as a flag-day instead of expand/contract; a `DROP` with no
-deprecation period; a migration with no rollback plan; schema drift from the database
-or between schema copies.
+`NOT NULL`/FK added without `NOT VALID`; DDL run without a `lock_timeout` (lock-queue
+pileup); unbatched backfill in one statement; a rename or type change done as a
+flag-day instead of expand/contract; an enum `ALTER TYPE … ADD VALUE` treated as
+routine; a `DROP` with no deprecation period; a migration with no rollback plan; schema
+drift from the database or between schema copies.

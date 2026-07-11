@@ -1,7 +1,7 @@
 {
   "name": "argus",
   "description": "Argus is a principal-engineer database review board for Claude Code. Every review lens is another eye on your data layer: relational schema, Prisma models, migrations, indexes, query performance, scalability, security, and DB-related backend code, checked against a shared, evidence-first engineering contract grounded in canonical sources.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "Hugo Assis",
     "email": "hugo.assis.j@gmail.com"
