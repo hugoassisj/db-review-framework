@@ -144,6 +144,105 @@ def check_lens_and_domain_consistency() -> None:
                 )
 
 
+def _defined_citation_keys() -> set[str]:
+    """Keys defined in bibliography.md as '**[KEY]**'."""
+    text = read(REFS_DIR / "bibliography.md")
+    return set(re.findall(r"\*\*\[([A-Z][A-Z0-9-]+)\]\*\*", text))
+
+
+def check_citation_integrity() -> None:
+    """Every bracketed citation key used in a lens or a knowledge digest must be
+    defined in bibliography.md. The framework's rule is that no claim ships without a
+    keyed source; this makes that rule enforceable instead of aspirational."""
+    defined = _defined_citation_keys()
+    if not defined:
+        fail("bibliography.md: no '**[KEY]**' source definitions found")
+        return
+
+    md_files = sorted(LENSES_DIR.glob("*.md")) + [
+        p for p in sorted(REFS_DIR.glob("*.md")) if p.name != "bibliography.md"
+    ]
+    for path in md_files:
+        used = set(re.findall(r"\[([A-Z][A-Z0-9-]+)\]", read(path)))
+        for key in sorted(used - defined):
+            fail(
+                f"{path.relative_to(ROOT)}: cites [{key}] but it is not defined in "
+                f"bibliography.md"
+            )
+
+
+def check_lens_header_matches_map() -> None:
+    """Each lens declares its knowledge domains in a '**Knowledge domains:**' header
+    line. That declaration must match the lens's row in the dependency map, so the two
+    sources of truth cannot drift (references/README.md promises they stay in sync)."""
+    mapping = _parse_dependency_map()
+    if not mapping:
+        return
+    for lens_path in sorted(LENSES_DIR.glob("*.md")):
+        lens = lens_path.stem
+        if lens not in mapping:
+            continue  # missing-from-map is reported by check_lens_and_domain_consistency
+        m = re.search(r"\*\*Knowledge domains:\*\*\s*(.+?)\.", read(lens_path))
+        if not m:
+            fail(f"lenses/{lens}.md: missing a '**Knowledge domains:**' header line")
+            continue
+        header_domains = {d.strip() for d in m.group(1).split(",") if d.strip()}
+        map_domains = set(mapping[lens])
+        if header_domains != map_domains:
+            fail(
+                f"lenses/{lens}.md: header domains {sorted(header_domains)} do not "
+                f"match the dependency map {sorted(map_domains)}"
+            )
+
+
+def _parse_dispatch_lens_column() -> str:
+    """Return the concatenated text of the 'Lenses to engage' column of the SKILL.md
+    dispatch table (section 2). The artifact column is excluded on purpose."""
+    text = read(SKILL_DIR / "SKILL.md")
+    section = re.search(r"Dispatch map:(.*?)(?:\n##\s|\Z)", text, re.DOTALL)
+    if not section:
+        fail("SKILL.md: 'Dispatch map:' table not found")
+        return ""
+    cells: list[str] = []
+    for line in section.group(1).splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        row = [c.strip() for c in line.strip("|").split("|")]
+        if len(row) != 2:
+            continue
+        artifact, lenses = row
+        if artifact.lower().startswith("artifact") or set(artifact) <= {"-", " "}:
+            continue  # header / separator row
+        cells.append(lenses)
+    return " ".join(cells)
+
+
+def check_dispatch_table_lenses() -> None:
+    """The SKILL.md dispatch table and the lens files must agree: every lens file is
+    dispatched somewhere, and every hyphenated lens token in the table resolves to a
+    real lens. (README.md and CONTRIBUTING.md both claim CI enforces this.)"""
+    lens_files = {p.stem for p in LENSES_DIR.glob("*.md")}
+    if not lens_files:
+        fail("lenses/: no lens files found")
+        return
+    column = _parse_dispatch_lens_column()
+    if not column:
+        return
+
+    # Every lens file must appear in the dispatch table.
+    for lens in sorted(lens_files):
+        if not re.search(rf"\b{re.escape(lens)}\b", column):
+            fail(f"lenses/{lens}.md exists but is not referenced in the SKILL.md dispatch table")
+
+    # Every multi-word (hyphenated) lens token in the table must be a real lens. Prose
+    # in the lens column is plain words; only lens names are hyphenated, so this catches
+    # a renamed or typo'd lens without flagging ordinary text.
+    for token in sorted(set(re.findall(r"[a-z]+(?:-[a-z]+)+", column))):
+        if token not in lens_files:
+            fail(f"SKILL.md dispatch table references lens '{token}' but lenses/{token}.md is missing")
+
+
 def check_golden_projects() -> None:
     """Every validation/golden-project-* must carry its golden file. This is
     engine-agnostic on purpose: a future non-Prisma fixture need not have a
@@ -163,6 +262,9 @@ def main() -> int:
     check_version_matches_changelog(plugin)
     check_skill_frontmatter()
     check_lens_and_domain_consistency()
+    check_citation_integrity()
+    check_lens_header_matches_map()
+    check_dispatch_table_lenses()
     check_golden_projects()
 
     if errors:

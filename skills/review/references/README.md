@@ -53,7 +53,7 @@ with each lens header.
 | performance | UTIL, SPE (T2), PG-DOCS, HPJP |
 | modeling | SQLAP, DMMS (T3), DDIA |
 | migrations | REFDB (T3), PG-DOCS, provenance (zero-downtime write-ups) |
-| security | OWASP-SQLI, OWASP-CRYPTO (T1-equivalent), PG-DOCS (RLS) |
+| security | OWASP-SQLI, OWASP-CRYPTO, OWASP-ASVS (T1-equivalent), PG-DOCS (RLS) |
 | scalability | DDIA (T2), PG-DOCS (partitioning) |
 | distributed-systems | DDIA (T2), papers (provenance) |
 | architecture | POEAA, DDD, LDDD, APOSD (T4) |

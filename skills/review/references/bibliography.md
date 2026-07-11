@@ -20,6 +20,24 @@ or High finding is never based on the provenance tier alone.
 - **[SQL-STD]** ANSI/ISO SQL standard (conceptual). Isolation levels, constraints,
   window functions, CTEs, and the relational model as the vendor-neutral baseline.
 
+## Security references (Tier 1-equivalent)
+
+Canonical, vendor-neutral security guidance. Treated as Tier-1-equivalent for the
+security domain (see the domain-to-source map in `README.md`).
+
+- **[OWASP-SQLI]** OWASP SQL Injection Prevention Cheat Sheet.
+  https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  Parameterized queries, safe handling of dynamic identifiers (allowlisting), and why
+  string-built SQL is unsafe.
+- **[OWASP-CRYPTO]** OWASP Cryptographic Storage Cheat Sheet.
+  https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+  Password hashing (slow, salted), secrets and PII encryption at rest, and envelope
+  encryption with a KMS-managed master key.
+- **[OWASP-ASVS]** OWASP Application Security Verification Standard.
+  https://owasp.org/www-project-application-security-verification-standard/
+  Access control and mass-assignment defenses, least privilege, and logging of
+  sensitive data.
+
 ## Tier 2: Essential books
 
 - **[DBI]** Alex Petrov, *Database Internals* (O'Reilly, 2019). Storage engines,

@@ -120,4 +120,4 @@ prisma.user.update({ where: { id }, data: { name: req.body.name, bio: req.body.b
 
 `references/security.md` (injection, RLS, PII, least privilege, mass assignment),
 `references/postgresql.md` (RLS, roles), `references/prisma.md` (raw-query safety).
-Keyed sources: [OWASP-SQLI], [OWASP-CRYPTO], [PG-DOCS], [PRISMA-DOCS].
+Keyed sources: [OWASP-SQLI], [OWASP-CRYPTO], [OWASP-ASVS], [PG-DOCS], [PRISMA-DOCS].
