@@ -1,5 +1,10 @@
 # db-review
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-informational.svg)](CHANGELOG.md)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-8A2BE2.svg)](https://docs.claude.com/en/docs/claude-code)
+[![CI](https://github.com/hugoassisj/db-review-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/hugoassisj/db-review-framework/actions/workflows/ci.yml)
+
 A principal-engineer **database review board** for Claude Code.
 
 `db-review` reviews the database layer of a change the way an experienced staff
@@ -39,7 +44,7 @@ specifics live in their own lenses.
 From a hosted GitHub repository:
 
 ```
-/plugin marketplace add your-github-username/db-review-framework
+/plugin marketplace add hugoassisj/db-review-framework
 /plugin install db-review@db-review-framework
 ```
 
@@ -94,13 +99,25 @@ validation/
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. In short:
+
 - Add a **lens** by following the section structure in an existing
   `skills/review/lenses/*.md` and declaring its knowledge domains. See the "How to
-  add a lens" section of `FRAMEWORK.md`.
+  add a lens" section of `FRAMEWORK.md`. Keep the dispatch table in `SKILL.md` and the
+  lens→domain map in `references/README.md` in sync (CI enforces this).
 - Add a **benchmark** by creating `validation/golden-project-NN/` with a sample
   project and an `expected-findings.md`. See `validation/README.md`.
 - Knowledge lives in `references/`, keyed to the tiered bibliography. Prefer
   canonical sources.
+
+Run the deterministic checks locally with `python3 scripts/validate.py` (the same
+check CI runs). Participation is governed by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+To report a vulnerability, or to understand the plugin's read-only, consent-gated
+database access, see [SECURITY.md](SECURITY.md).
 
 ## License
 
