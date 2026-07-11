@@ -1,7 +1,7 @@
 {
-  "name": "db-review-framework",
+  "name": "argus",
   "metadata": {
-    "description": "A principal-engineer database review board for Claude Code: evidence-first reviews of relational schema, Prisma, migrations, indexing, query performance, scalability, security, and DB-related backend code."
+    "description": "Argus, a principal-engineer database review board for Claude Code: evidence-first reviews of relational schema, Prisma, migrations, indexing, query performance, scalability, security, and DB-related backend code."
   },
   "owner": {
     "name": "Hugo Assis",
@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "db-review",
+      "name": "argus",
       "source": "./",
       "description": "A principal-engineer database review board: schema, Prisma, migrations, indexing, query performance, scalability, security, and DB-related backend code, reviewed against a shared evidence-first contract."
     }

@@ -1,8 +1,8 @@
-# Contributing to db-review
+# Contributing to Argus
 
-Thanks for your interest in improving `db-review`. This project is a Claude Code
-plugin: its "code" is structured Markdown — an orchestrator skill, a framework
-contract, review lenses, and a tiered knowledge base — plus a validation harness.
+Thanks for your interest in improving Argus. This project is a Claude Code
+plugin: its "code" is structured Markdown (an orchestrator skill, a framework
+contract, review lenses, and a tiered knowledge base) plus a validation harness.
 Contributions are held to the same evidence-first standard the reviewer itself
 enforces.
 
@@ -22,7 +22,7 @@ validation/
 ```
 
 The guiding split: **lenses hold reasoning** (how to review), **references hold
-facts** (what is true). Keep them separate — see
+facts** (what is true). Keep them separate. See
 [`skills/review/references/README.md`](skills/review/references/README.md).
 
 ## Ways to contribute
@@ -79,12 +79,12 @@ Any change to reviewer behavior should uphold the contract in `FRAMEWORK.md`:
 5. Validate locally:
    - `python3 scripts/validate.py` (the same deterministic check CI runs);
    - optionally load the plugin and re-run the golden project:
-     `claude --plugin-dir .` then `/db-review:review validation/golden-project-01/schema.prisma`.
+     `claude --plugin-dir .` then `/argus:review validation/golden-project-01/schema.prisma`.
 6. Open a pull request and fill in the template.
 
 ## Versioning
 
 The repository follows [Semantic Versioning](https://semver.org). The framework
 contract (`FRAMEWORK.md`) carries its own contract version and only changes when the
-*reasoning* changes, not when facts are updated — see
+*reasoning* changes, not when facts are updated. See
 [`CHANGELOG.md`](CHANGELOG.md).
