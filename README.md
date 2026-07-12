@@ -1,17 +1,44 @@
-# Argus
+<p align="center">
+  <picture>
+    <img <img src="https://github.com/user-attachments/assets/66923b92-55e5-4a18-a088-672e949082b8" width="250" alt="Argus, the many-eyed AI Database Architect.">
+  </picture>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-informational.svg)](CHANGELOG.md)
-[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-8A2BE2.svg)](https://docs.claude.com/en/docs/claude-code)
-[![CI](https://github.com/hugoassisj/db-review-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/hugoassisj/db-review-framework/actions/workflows/ci.yml)
+<h1 align="center">ARGUS</h1>
 
-**The many-eyed database reviewer for Claude Code.**
+<p align="center">
+  <em>The many-eyed AI Database reviewer. Sees everything. Never guesses.</em>
+</p>
 
-Argus reviews the database layer of a change the way a principal engineer would, and
-tells you plainly whether it is safe to ship. Not a linter. Every finding carries
-evidence, reasoning, impact now and at scale, a concrete fix, the trade-off, and a
-confidence level. The review ends with a real approval decision, the kind a staff
-engineer would put their name on.
+<p align="center">
+  <img src="https://img.shields.io/github/stars/hugoassisj/argus-db?style=flat-square&color=111111&label=stars" alt="Stars">
+  <img src="https://img.shields.io/github/v/release/hugoassisj/argus-db?style=flat-square&color=111111&label=release" alt="Release">
+  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+</p>
+
+<sub>Argus reviews the database layer of a change the way a principal engineer would, and tells you plainly whether it is safe to ship. Not a linter. Every finding carries evidence, reasoning, impact now and at scale, a concrete fix, the trade-off, and a confidence level. The review ends with a real approval decision, the kind a staff engineer would put their name on.</sub>
+
+## Review your database like a Staff Engineer.
+
+Deep AI-assisted reviews of:
+
+- ✓ Prisma Schema
+- ✓ PostgreSQL
+- ✓ Indexes
+- ✓ Relations
+- ✓ Migrations
+- ✓ Performance
+- ✓ Big-O complexity
+- ✓ Security
+- ✓ Scalability
+- ✓ Architecture
+
+Generates:
+- Executive summary
+- Risk assessment
+- Mermaid diagrams
+- Performance analysis
+- Actionable improvements
 
 ## Why this exists
 
